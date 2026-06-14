@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { QuizQuestion } from "@/lib/supabase";
-import { Spinner } from "@/app/page";
+import { Spinner } from "@/components/SharedComponents";
 
 interface Props { questions: QuizQuestion[]; userId?: string; sessionId?: string; onQuizSubmitted?: () => void; }
 type AnswerState = Record<number, { selected: string; correct: boolean }>;

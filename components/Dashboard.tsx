@@ -7,7 +7,7 @@ import { FlashcardDeck } from "@/components/FlashcardDeck";
 import { QuizComponent } from "@/components/QuizComponent";
 import { ProgressTracker } from "@/components/ProgressTracker";
 import { ChatComponent } from "@/components/ChatComponent";
-import { LogoMark, Spinner } from "@/app/page";
+import { LogoMark, Spinner } from "@/components/SharedComponents";
 
 // Mobile sidebar styles
 const mobileStyles = `

@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { Flashcard } from "@/lib/supabase";
-import { Spinner } from "@/app/page";
+import { Spinner } from "@/components/SharedComponents";
 
 interface Props { flashcards: Flashcard[]; }
 

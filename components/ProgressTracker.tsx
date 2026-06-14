@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase, QuizAttempt } from "@/lib/supabase";
-import { Spinner } from "@/app/page";
+import { Spinner } from "@/components/SharedComponents";
 
 interface Props { sessionId: string; refreshTrigger?: number; }
 

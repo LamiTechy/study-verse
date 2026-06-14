@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase, ChatMessage } from "@/lib/supabase";
 import { User } from "@supabase/supabase-js";
-import { Spinner } from "@/app/page";
+import { Spinner } from "@/components/SharedComponents";
 
 interface Props { sessionId: string; user: User; }
 

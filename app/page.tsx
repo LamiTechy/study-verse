@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { Dashboard } from "@/components/Dashboard";
 import { User } from "@supabase/supabase-js";
 import { FileText, Layers, Zap, BarChart3, Smartphone, Rocket } from "lucide-react";
+import { LogoMark, Spinner } from "@/components/SharedComponents";
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
@@ -144,23 +145,5 @@ function FeatureCard({ icon, title, description }: { icon: React.ReactNode; titl
       <h3 style={{ fontSize:18, fontWeight:600, marginBottom:12, color:"var(--text)", letterSpacing:"-0.015em", fontFamily:"'Sora', sans-serif" }}>{title}</h3>
       <p style={{ color:"rgba(255,255,255,0.6)", lineHeight:1.6, fontSize:14 }}>{description}</p>
     </div>
-  );
-}
-
-export function LogoMark({ size = 28 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
-      <rect width="32" height="32" rx="9" fill="var(--accent)" fillOpacity=".14"/>
-      <rect width="32" height="32" rx="9" stroke="var(--accent)" strokeOpacity=".35" fill="none"/>
-      <path d="M9 11.5h14M9 16h9M9 20.5h11.5" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round"/>
-      <circle cx="24" cy="20.5" r="3.5" fill="var(--accent)" fillOpacity=".9"/>
-      <circle cx="24" cy="20.5" r="1.5" fill="#fff" fillOpacity=".9"/>
-    </svg>
-  );
-}
-
-export function Spinner({ size = 16, color = "var(--accent)" }: { size?: number; color?: string }) {
-  return (
-    <span style={{ display:"inline-block", width:size, height:size, border:`1.5px solid ${color}30`, borderTopColor:color, borderRadius:"50%", animation:"spin 0.75s linear infinite", flexShrink:0 }} />
   );
 }
