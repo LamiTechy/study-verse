@@ -49,10 +49,10 @@ function LandingPage() {
           <span style={{ fontSize:20, fontWeight:"bold", color:"var(--text)", letterSpacing:"-0.02em" }}>StudyForge</span>
         </div>
         <div style={{ display:"flex", gap:16 }}>
-          <Link href="/auth/login" style={{ padding:"10px 24px", color:"var(--text)", textDecoration:"none", borderRadius:8, border:"1px solid var(--accent)", cursor:"pointer", transition:"all 0.3s", fontWeight:500, fontSize:13 }}>
+          <Link href="/auth/login" style={{ padding:"6px 14px", color:"var(--text)", textDecoration:"none", borderRadius:6, border:"1px solid var(--accent)", cursor:"pointer", transition:"all 0.3s", fontWeight:500, fontSize:12 }}>
             Sign In
           </Link>
-          <Link href="/auth/signup" style={{ padding:"10px 24px", background:"var(--accent)", color:"white", textDecoration:"none", borderRadius:8, cursor:"pointer", fontWeight:"bold", transition:"all 0.3s", fontSize:13 }}>
+          <Link href="/auth/signup" style={{ padding:"6px 14px", background:"var(--accent)", color:"white", textDecoration:"none", borderRadius:6, cursor:"pointer", fontWeight:600, transition:"all 0.3s", fontSize:12 }}>
             Get Started
           </Link>
         </div>

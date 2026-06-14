@@ -23,6 +23,10 @@ const mobileStyles = `
     [data-sidebar-backdrop] {
       display: block !important;
     }
+    [data-topbar] {
+      backdrop-filter: none !important;
+      background: var(--bg-raised) !important;
+    }
   }
 `;
 
@@ -74,10 +78,10 @@ export function Dashboard({ user }: Props) {
     <div style={{ height:"100vh", overflow:"hidden", display:"flex", flexDirection:"column", background:"var(--bg)" }}>
       <style>{mobileStyles}</style>
       {/* Topbar */}
-      <header style={{
+      <header data-topbar style={{
         height:48, borderBottom:"1px solid var(--border)",
         display:"flex", alignItems:"center", justifyContent:"space-between",
-        padding:"0 16px", flexShrink:0, background:"var(--bg)", zIndex:40,
+        padding:"0 16px", flexShrink:0, background:"var(--bg-raised)", zIndex:40,
         backdropFilter:"blur(16px)"
       }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
@@ -109,8 +113,8 @@ export function Dashboard({ user }: Props) {
           onClick={() => setCollapsed(true)}
           style={{
             display:"none",
-            position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", 
-            zIndex:39, top:48
+            position:"fixed", top:48, right:0, bottom:0, left:0, background:"rgba(0,0,0,0.5)", 
+            zIndex:39, pointerEvents: collapsed ? "none" : "auto"
           }}
         />
         
@@ -158,11 +162,13 @@ export function Dashboard({ user }: Props) {
         </aside>
 
         {/* Main content */}
-        <main style={{ flex:1, overflowY:"auto", minWidth:0 }}>
-          {!activeSession
-            ? <NoteInputPanel notes={notes} setNotes={setNotes} onGenerate={handleGenerate} generating={generating} error={error} />
-            : <SessionView session={activeSession} activeTab={activeTab} setActiveTab={setActiveTab} user={user} />
-          }
+        <main style={{ flex:1, overflow:"hidden", minWidth:0, width:"100%" }}>
+          <div style={{ width:"100%", height:"100%", overflowY:"auto", overflowX:"hidden", paddingRight:"8px" }}>
+            {!activeSession
+              ? <NoteInputPanel notes={notes} setNotes={setNotes} onGenerate={handleGenerate} generating={generating} error={error} />
+              : <SessionView session={activeSession} activeTab={activeTab} setActiveTab={setActiveTab} user={user} />
+            }
+          </div>
         </main>
       </div>
     </div>
@@ -244,7 +250,7 @@ function NoteInputPanel({ notes, setNotes, onGenerate, generating, error }: {
   }
 
   return (
-    <div style={{ maxWidth:680, margin:"0 auto", padding:"56px 28px", animation:"fadeUp 0.4s cubic-bezier(0.4,0,0.2,1) both" }}>
+    <div style={{ maxWidth:680, margin:"0 auto", padding:"clamp(20px, 5vw, 56px) clamp(16px, 5vw, 28px)", animation:"fadeUp 0.4s cubic-bezier(0.4,0,0.2,1) both" }}>
       {/* Hero */}
       <div style={{ marginBottom:44 }}>
         <div style={{ marginBottom:14 }}>
@@ -369,8 +375,8 @@ function NoteInputPanel({ notes, setNotes, onGenerate, generating, error }: {
           style={{
             width:"100%", background:"transparent", color:"var(--text)",
             fontSize:13, lineHeight:1.8, padding:"20px 22px",
-            resize:"none", border:"none", outline:"none", minHeight:220,
-            fontFamily:"Sora,sans-serif",
+            resize:"none", border:"none", outline:"none", minHeight:220, maxHeight:"400px",
+            fontFamily:"Sora,sans-serif", boxSizing:"border-box"
           }}
         />
         <div style={{
@@ -426,7 +432,7 @@ function SessionView({ session, activeTab, setActiveTab, user }: {
   };
 
   return (
-    <div style={{ maxWidth:740, margin:"0 auto", padding:"36px 28px", animation:"fadeUp 0.35s cubic-bezier(0.4,0,0.2,1) both" }}>
+    <div style={{ maxWidth:740, margin:"0 auto", padding:"clamp(20px, 5vw, 36px) clamp(16px, 5vw, 28px)", animation:"fadeUp 0.35s cubic-bezier(0.4,0,0.2,1) both" }}>
       {/* Session header */}
       <div style={{ marginBottom:28 }}>
         <p className="mono" style={{ fontSize:9, color:"var(--text-faint)", letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:7 }}>{date}</p>

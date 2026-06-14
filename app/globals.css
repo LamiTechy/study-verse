@@ -6,19 +6,19 @@
 
 /* ─── TOKENS ──────────────────────────────────────────────────────────── */
 :root {
-  --bg:           #09090B;
-  --bg-raised:    #0F0F12;
-  --bg-elevated:  #141418;
-  --bg-hover:     #1A1A20;
-  --bg-active:    #1E1E26;
+  --bg:           #1A1F2E;
+  --bg-raised:    #232B3D;
+  --bg-elevated:  #2D3849;
+  --bg-hover:     #384454;
+  --bg-active:    #3F4B5C;
 
-  --border:       #1C1C24;
-  --border-mid:   #28283A;
-  --border-hi:    #38385A;
+  --border:       #3F4B5C;
+  --border-mid:   #5A6680;
+  --border-hi:    #7A8899;
 
-  --text:         #ECECF4;
-  --text-dim:     #72728A;
-  --text-faint:   #34344A;
+  --text:         #F8FAFB;
+  --text-dim:     #A0A8C0;
+  --text-faint:   #707A94;
 
   --accent:       #7B6BF5;
   --accent-hi:    #9B8EF8;
@@ -52,14 +52,26 @@
 /* ─── BASE ───────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 
-html, body {
+html {
+  width: 100%; height: 100%;
+}
+
+body {
   margin: 0; padding: 0;
+  width: 100%; height: 100%;
   background: var(--bg);
   color: var(--text);
   font-family: 'Sora', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-size: 14px;
+  overflow: hidden;
+}
+
+/* Next.js specific root elements */
+#__next, #root {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* ─── TYPOGRAPHY UTILITIES ───────────────────────────────────────────── */
