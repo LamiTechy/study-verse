@@ -7,10 +7,10 @@
 /* ─── TOKENS ──────────────────────────────────────────────────────────── */
 :root {
   --bg:           #1A1F2E;
-  --bg-raised:    #1A1F2E;
-  --bg-elevated:  #1A1F2E;
-  --bg-hover:     #1F2433;
-  --bg-active:    #242D3C;
+  --bg-raised:    #232B3D;
+  --bg-elevated:  #2D3849;
+  --bg-hover:     #384454;
+  --bg-active:    #3F4B5C;
 
   --border:       #3F4B5C;
   --border-mid:   #5A6680;
