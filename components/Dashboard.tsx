@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react";
 import { User } from "@supabase/supabase-js";
 import { supabase, StudySession } from "@/lib/supabase";
 import { FlashcardDeck } from "@/components/FlashcardDeck";
@@ -19,9 +19,6 @@ const mobileStyles = `
       height: calc(100vh - 48px);
       z-index: 40;
       border-right: 1px solid var(--border);
-    }
-    [data-sidebar-backdrop] {
-      display: block !important;
     }
     [data-topbar] {
       backdrop-filter: none !important;
@@ -42,6 +39,21 @@ export function Dashboard({ user }: Props) {
   const [activeSession, setActiveSession] = useState<StudySession | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("summary");
   const [collapsed, setCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // On mobile, start with the sidebar closed and only show the backdrop
+  // while the drawer is open. Resize back to desktop re-opens the sidebar.
+  useLayoutEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    const update = () => {
+      setIsMobile(mq.matches);
+      if (!mq.matches) setCollapsed(false);
+    };
+    if (mq.matches) setCollapsed(true);
+    setIsMobile(mq.matches);
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   const fetchSessions = useCallback(async () => {
     setSessionsLoading(true);
@@ -107,16 +119,17 @@ export function Dashboard({ user }: Props) {
       </header>
 
       <div style={{ flex:1, display:"flex", overflow:"hidden", position:"relative" }}>
-        {/* Mobile backdrop overlay */}
-        <div 
-          data-sidebar-backdrop
-          onClick={() => setCollapsed(true)}
-          style={{
-            display:"none",
-            position:"fixed", top:48, right:0, bottom:0, left:0, background:"rgba(0,0,0,0.5)", 
-            zIndex:39, pointerEvents: collapsed ? "none" : "auto"
-          }}
-        />
+        {/* Mobile backdrop overlay — only when the drawer is open */}
+        {isMobile && !collapsed && (
+          <div
+            data-sidebar-backdrop
+            onClick={() => setCollapsed(true)}
+            style={{
+              position: "fixed", top: 48, right: 0, bottom: 0, left: 0, background: "rgba(0,0,0,0.5)",
+              zIndex: 39
+            }}
+          />
+        )}
         
         {/* Sidebar */}
         <aside 

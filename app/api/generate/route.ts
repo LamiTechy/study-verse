@@ -13,6 +13,10 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// ~2500 tokens of input per chunk — keeps us under Groq's 12k TPM free-tier limit
+const MAX_CHARS_PER_CHUNK = 10000;
+const MAX_RETRIES = 4;
+
 const SYSTEM_PROMPT = `You are an expert study assistant. Given raw study notes, you MUST respond with ONLY a valid JSON object — no markdown, no preamble, no explanation. The JSON must follow this exact schema:
 
 {
@@ -41,6 +45,134 @@ Rules:
 - IMPORTANT: Go beyond extracting information. Add your own expert analysis, connections between concepts, practical implications, and insights that enhance learning.
 - Output ONLY the JSON object. No code fences. No extra keys.`;
 
+// Per-section prompt: tells the model this is one slice of a larger document
+function sectionPrompt(part: number, total: number): string {
+  return `You are an expert study assistant. These are study notes from section ${part} of ${total} of a document. You MUST respond with ONLY a valid JSON object — no markdown, no preamble, no explanation. The JSON must follow this exact schema:
+
+{
+  "summary": {
+    "bullets": ["string — detailed bullet explaining a key point with context", "..."],
+    "key_concepts": ["string — important term or concept", "..."]
+  },
+  "flashcards": [
+    { "term": "string", "definition": "string" }
+  ],
+  "quiz": [
+    {
+      "question": "string",
+      "options": ["A) ...", "B) ...", "C) ...", "D) ..."],
+      "answer": "A) ...",
+      "explanation": "string — why this answer is correct"
+    }
+  ]
+}
+
+Rules for this section:
+- summary.bullets: 3–6 detailed bullets covering the material in THIS section. Each bullet should be 2–3 sentences with context and importance. Add your own insights and analytical observations.
+- summary.key_concepts: 4–8 important terms/concepts from THIS section. Extract key terms AND add related concepts, implications, and expert insights.
+- flashcards: 5–10 cards, each with a clear term and a detailed definition (2–4 sentences) with context, examples, and real-world connections.
+- quiz: 5–10 multiple-choice questions with 4 options each. "answer" must be the full text of one of the options (including the letter prefix). Include detailed explanations.
+- Output ONLY the JSON object. No code fences. No extra keys.`;
+}
+
+// Split notes into chunks on paragraph boundaries
+function chunkNotes(text: string, maxChars = MAX_CHARS_PER_CHUNK): string[] {
+  const paragraphs = text.split(/\n\s*\n/);
+  const chunks: string[] = [];
+  let current = "";
+  for (const para of paragraphs) {
+    if (current.length + para.length + 2 > maxChars) {
+      if (current.trim()) chunks.push(current.trim());
+      current = para;
+      while (current.length > maxChars) {
+        chunks.push(current.slice(0, maxChars));
+        current = current.slice(maxChars);
+      }
+    } else {
+      current = current ? `${current}\n\n${para}` : para;
+    }
+  }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks;
+}
+
+// Call Groq with retry/backoff on rate-limit errors (429 / 413)
+async function callGroqWithRetry(
+  systemPrompt: string,
+  userContent: string,
+  attempt = 0
+): Promise<string> {
+  try {
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      max_tokens: 4096,
+      temperature: 0.3,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userContent },
+      ],
+    });
+    return completion.choices[0]?.message?.content ?? "";
+  } catch (e: any) {
+    const status = e?.status;
+    if ((status === 429 || status === 413) && attempt < MAX_RETRIES) {
+      const retryAfter = e?.headers?.["retry-after"]
+        ? Number(e.headers["retry-after"])
+        : 20;
+      const waitMs = Math.max(retryAfter, 10) * 1000;
+      console.warn(
+        `Groq rate limit (${status}), retrying in ${waitMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`
+      );
+      await new Promise((r) => setTimeout(r, waitMs));
+      return callGroqWithRetry(systemPrompt, userContent, attempt + 1);
+    }
+    throw e;
+  }
+}
+
+function parseJson(rawText: string): GenerateResult {
+  const jsonText = rawText
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```\s*$/i, "")
+    .trim();
+  return JSON.parse(jsonText);
+}
+
+// Round-robin merge so every chunk is represented in the final output
+function interleave<T>(arrays: T[][], max: number): T[] {
+  const result: T[] = [];
+  let i = 0;
+  while (result.length < max) {
+    let added = false;
+    for (const arr of arrays) {
+      if (i < arr.length) {
+        result.push(arr[i]);
+        added = true;
+        if (result.length >= max) break;
+      }
+    }
+    if (!added) break;
+    i++;
+  }
+  return result;
+}
+
+function mergeResults(results: GenerateResult[]): GenerateResult {
+  if (results.length === 1) return results[0];
+  return {
+    summary: {
+      bullets: interleave(results.map((r) => r.summary?.bullets ?? []), 12),
+      key_concepts: interleave(
+        results.map((r) => r.summary?.key_concepts ?? []),
+        20
+      ),
+    },
+    flashcards: interleave(results.map((r) => r.flashcards ?? []), 25),
+    quiz: interleave(results.map((r) => r.quiz ?? []), 25),
+  };
+}
+
 export async function POST(req: NextRequest) {
   console.log("GROQ KEY:", process.env.GROQ_API_KEY ? "found ✓" : "MISSING ✗");
   try {
@@ -60,36 +192,40 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ---- Call Groq API ---------------------------------------------
-    const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      max_tokens: 4096,
-      temperature: 0.3,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: `Here are my study notes:\n\n${notes.trim()}` },
-      ],
-    });
+    // ---- Split large docs into chunks, process sequentially to respect TPM
+    const chunks = chunkNotes(notes.trim());
+    const results: GenerateResult[] = [];
 
-    const rawText = completion.choices[0]?.message?.content ?? "";
-
-    // Strip accidental markdown fences if model misbehaves
-    const jsonText = rawText
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/```\s*$/i, "")
-      .trim();
-
-    let generated: GenerateResult;
-    try {
-      generated = JSON.parse(jsonText);
-    } catch {
-      console.error("Failed to parse AI response:", rawText);
-      return NextResponse.json(
-        { error: "AI returned an unexpected format. Please try again." },
-        { status: 500 }
-      );
+    if (chunks.length === 1) {
+      const rawText = await callGroqWithRetry(SYSTEM_PROMPT, `Here are my study notes:\n\n${chunks[0]}`);
+      try {
+        results.push(parseJson(rawText));
+      } catch {
+        console.error("Failed to parse AI response:", rawText);
+        return NextResponse.json(
+          { error: "AI returned an unexpected format. Please try again." },
+          { status: 500 }
+        );
+      }
+    } else {
+      for (let i = 0; i < chunks.length; i++) {
+        const rawText = await callGroqWithRetry(
+          sectionPrompt(i + 1, chunks.length),
+          `Here is section ${i + 1} of ${chunks.length} of my study notes:\n\n${chunks[i]}`
+        );
+        try {
+          results.push(parseJson(rawText));
+        } catch {
+          console.error("Failed to parse AI response for section", i + 1, ":", rawText);
+          return NextResponse.json(
+            { error: `AI returned an unexpected format for section ${i + 1}. Please try again.` },
+            { status: 500 }
+          );
+        }
+      }
     }
+
+    const generated = mergeResults(results);
 
     // ---- Basic validation ------------------------------------------
     if (!generated.summary || !generated.flashcards || !generated.quiz) {
@@ -127,7 +263,14 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ session }, { status: 200 });
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.status === 429 || err?.status === 413) {
+      console.error("Groq rate limit exceeded:", err);
+      return NextResponse.json(
+        { error: "Rate limit reached. This can happen with very large documents — please try again in a minute." },
+        { status: 429 }
+      );
+    }
     console.error("Unexpected error in /api/generate:", err);
     return NextResponse.json(
       { error: "An unexpected error occurred." },
