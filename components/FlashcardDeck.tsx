@@ -81,7 +81,7 @@ export function FlashcardDeck({ flashcards }: Props) {
         onClick={() => !transitioning && setFlipped(f => !f)}
         style={{ perspective:"1400px", cursor:"pointer", userSelect:"none" }}>
         <div style={{
-          position:"relative", width:"100%", minHeight:260,
+          display:"grid", width:"100%", minHeight:260,
           transformStyle:"preserve-3d",
           transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)",
           transition:"transform 0.55s cubic-bezier(0.4,0.2,0.2,1)",
@@ -89,7 +89,7 @@ export function FlashcardDeck({ flashcards }: Props) {
         }}>
           {/* Front face */}
           <div style={{
-            position:"absolute", inset:0, backfaceVisibility:"hidden",
+            position:"relative", gridArea:"1 / 1", minWidth:0, backfaceVisibility:"hidden",
             background:"var(--bg-raised)", border:"1px solid var(--border)",
             borderRadius:"var(--radius-xl)", padding:"36px 32px",
             display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
@@ -106,7 +106,7 @@ export function FlashcardDeck({ flashcards }: Props) {
               display:"flex", alignItems:"center", justifyContent:"center",
               fontSize:20, color:"var(--accent)"
             }}>⊞</div>
-            <p className="serif" style={{ color:"var(--text)", fontSize:"clamp(18px,3vw,24px)", fontWeight:600, letterSpacing:"-0.025em", textAlign:"center", lineHeight:1.25 }}>
+            <p className="serif" style={{ maxWidth:"100%", overflowWrap:"break-word", wordBreak:"break-word", color:"var(--text)", fontSize:"clamp(18px,3vw,24px)", fontWeight:600, letterSpacing:"-0.025em", textAlign:"center", lineHeight:1.25 }}>
               {card.term}
             </p>
             <p style={{ color:"var(--text-faint)", fontSize:11, marginTop:20, letterSpacing:"0.05em" }}>tap to reveal definition</p>
@@ -114,7 +114,7 @@ export function FlashcardDeck({ flashcards }: Props) {
 
           {/* Back face */}
           <div style={{
-            position:"absolute", inset:0, backfaceVisibility:"hidden",
+            gridArea:"1 / 1", minWidth:0, backfaceVisibility:"hidden",
             transform:"rotateY(180deg)",
             background:"var(--bg-elevated)", border:"1px solid var(--accent-border)",
             borderRadius:"var(--radius-xl)", padding:"36px 32px",
@@ -124,7 +124,7 @@ export function FlashcardDeck({ flashcards }: Props) {
             <div style={{ marginBottom:14 }}>
               <span className="badge badge-accent">Definition</span>
             </div>
-            <p style={{ color:"var(--text)", fontSize:15, lineHeight:1.8, textAlign:"center" }}>
+            <p style={{ maxWidth:"100%", overflowWrap:"break-word", wordBreak:"break-word", color:"var(--text)", fontSize:15, lineHeight:1.8, textAlign:"center" }}>
               {card.definition}
             </p>
             <p style={{ color:"var(--text-faint)", fontSize:11, marginTop:20, letterSpacing:"0.05em" }}>tap to flip back</p>
