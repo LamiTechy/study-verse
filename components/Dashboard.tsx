@@ -242,7 +242,7 @@ function NoteInputPanel({ notes, setNotes, onGenerate, generating, error }: {
 }) {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfError, setPdfError] = useState("");
-  const [pdfMeta, setPdfMeta] = useState<{filename:string; pages:number}|null>(null);
+  const [pdfMeta, setPdfMeta] = useState<{filename:string; pages:number|null}|null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [focused, setFocused] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -251,14 +251,17 @@ function NoteInputPanel({ notes, setNotes, onGenerate, generating, error }: {
   const ready = chars >= 20 && !generating && !pdfLoading;
 
   async function handlePdf(file: File) {
-    if (file.type !== "application/pdf") { setPdfError("Only PDF files are supported."); return; }
+    const name = file.name.toLowerCase();
+    const isPdf = file.type === "application/pdf" || name.endsWith(".pdf");
+    const isDocx = file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || name.endsWith(".docx");
+    if (!isPdf && !isDocx) { setPdfError("Only PDF and DOCX files are supported."); return; }
     setPdfError(""); setPdfMeta(null); setPdfLoading(true);
     try {
       const form = new FormData(); form.append("file", file);
       const res = await fetch("/api/parse-pdf", { method:"POST", body:form });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "PDF parsing failed.");
-      setNotes(json.text); setPdfMeta({ filename:file.name, pages:json.pages });
+      if (!res.ok) throw new Error(json.error || "File parsing failed.");
+      setNotes(json.text); setPdfMeta({ filename:file.name, pages:json.pages ?? null });
     } catch(e:any) { setPdfError(e.message); } finally { setPdfLoading(false); }
   }
 
@@ -313,7 +316,7 @@ function NoteInputPanel({ notes, setNotes, onGenerate, generating, error }: {
             <div>
               <p style={{ color:"var(--green)", fontSize:12, fontWeight:600 }}>{pdfMeta.filename}</p>
               <p className="mono" style={{ color:"var(--text-dim)", fontSize:10, marginTop:2 }}>
-                {pdfMeta.pages} page{pdfMeta.pages!==1?"s":""} · {words.toLocaleString()} words extracted
+                {pdfMeta.pages ? `${pdfMeta.pages} page${pdfMeta.pages!==1?"s":""} · ` : ""}{words.toLocaleString()} words extracted
               </p>
             </div>
           </div>
@@ -339,7 +342,7 @@ function NoteInputPanel({ notes, setNotes, onGenerate, generating, error }: {
           }}>
           {pdfLoading ? (
             <div style={{ display:"flex", alignItems:"center", gap:10, color:"var(--text-dim)", fontSize:13, width:"100%" }}>
-              <Spinner /> Extracting text from PDF…
+              <Spinner /> Extracting text from file…
             </div>
           ) : (
             <>
@@ -348,13 +351,13 @@ function NoteInputPanel({ notes, setNotes, onGenerate, generating, error }: {
               </div>
               <div>
                 <p style={{ fontSize:13, fontWeight:500, color: dragOver ? "var(--accent-hi)" : "var(--text)" }}>
-                  {dragOver ? "Drop to upload" : "Drop a PDF here, or click to upload"}
+                  {dragOver ? "Drop to upload" : "Drop a PDF or DOCX here, or click to upload"}
                 </p>
-                <p style={{ fontSize:11, color:"var(--text-faint)", marginTop:3 }}>Text-based PDFs only · max 20 MB</p>
+                <p style={{ fontSize:11, color:"var(--text-faint)", marginTop:3 }}>Text-based PDFs &amp; DOCX · max 20 MB</p>
               </div>
             </>
           )}
-          <input ref={fileRef} type="file" accept="application/pdf" style={{ display:"none" }}
+          <input ref={fileRef} type="file" accept="application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style={{ display:"none" }}
             onChange={e => { const f=e.target.files?.[0]; if(f) handlePdf(f); e.target.value=""; }} />
         </div>
       )}

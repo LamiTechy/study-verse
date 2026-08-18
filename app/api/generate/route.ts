@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { createClient } from "@supabase/supabase-js";
-import { GenerateResult } from "@/lib/supabase";
+import { GenerateResult, Flashcard } from "@/lib/supabase";
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY!,
@@ -41,6 +41,7 @@ Rules:
 - summary.bullets: 8–12 detailed bullet points covering the material. Each bullet should be 2–3 sentences explaining the concept with context and importance. Include your own insights and analytical observations beyond what's stated in the notes.
 - summary.key_concepts: 12–20 important terms/concepts. Extract key terms from the notes AND add related concepts, implications, and expert insights that complement the content. Think deeply about what the student should understand.
 - flashcards: 15–25 cards, each with a clear term and a detailed definition (2–4 sentences). Include context, examples, applications, and real-world connections. Add your own expert insights and "why this matters" context.
+- flashcards CRITICAL: every term must be UNIQUE. Never repeat a term, concept, or idea that is already covered by another card, even if phrased differently. Each card must cover a distinct concept.
 - quiz: 15–25 multiple-choice questions with 4 options each. "answer" must be the full text of one of the options (including the letter prefix). Include detailed explanations. Create questions that test understanding and critical thinking, not just memorization. Some questions should require connecting concepts.
 - IMPORTANT: Go beyond extracting information. Add your own expert analysis, connections between concepts, practical implications, and insights that enhance learning.
 - Output ONLY the JSON object. No code fences. No extra keys.`;
@@ -71,6 +72,7 @@ Rules for this section:
 - summary.bullets: 3–6 detailed bullets covering the material in THIS section. Each bullet should be 2–3 sentences with context and importance. Add your own insights and analytical observations.
 - summary.key_concepts: 4–8 important terms/concepts from THIS section. Extract key terms AND add related concepts, implications, and expert insights.
 - flashcards: 5–10 cards, each with a clear term and a detailed definition (2–4 sentences) with context, examples, and real-world connections.
+- flashcards CRITICAL: every term must be UNIQUE within this section AND across the whole document. Never repeat a term, concept, or idea already covered, even if phrased differently.
 - quiz: 5–10 multiple-choice questions with 4 options each. "answer" must be the full text of one of the options (including the letter prefix). Include detailed explanations.
 - Output ONLY the JSON object. No code fences. No extra keys.`;
 }
@@ -104,7 +106,7 @@ async function callGroqWithRetry(
 ): Promise<string> {
   try {
     const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+      model: "openai/gpt-oss-120b",
       max_tokens: 4096,
       temperature: 0.3,
       messages: [
@@ -158,8 +160,25 @@ function interleave<T>(arrays: T[][], max: number): T[] {
   return result;
 }
 
+// Remove duplicate/near-duplicate flashcard terms
+function dedupeFlashcards(cards: Flashcard[]): Flashcard[] {
+  const seen: string[] = [];
+  return cards.filter((card) => {
+    const term = (card.term || "").toLowerCase().replace(/\s+/g, " ").trim();
+    if (!term) return false;
+    const isDup = seen.some((s) => s === term || s.includes(term) || term.includes(s));
+    if (!isDup) seen.push(term);
+    return !isDup;
+  });
+}
+
 function mergeResults(results: GenerateResult[]): GenerateResult {
-  if (results.length === 1) return results[0];
+  if (results.length === 1) {
+    return {
+      ...results[0],
+      flashcards: dedupeFlashcards(results[0].flashcards ?? []),
+    };
+  }
   return {
     summary: {
       bullets: interleave(results.map((r) => r.summary?.bullets ?? []), 12),
@@ -168,7 +187,7 @@ function mergeResults(results: GenerateResult[]): GenerateResult {
         20
       ),
     },
-    flashcards: interleave(results.map((r) => r.flashcards ?? []), 25),
+    flashcards: dedupeFlashcards(interleave(results.map((r) => r.flashcards ?? []), 25)),
     quiz: interleave(results.map((r) => r.quiz ?? []), 25),
   };
 }

@@ -82,7 +82,7 @@ Remember: Only help with questions about the provided study material. If a quest
 
     // First, check if question is relevant to the study material
     const relevanceCheck = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+      model: "openai/gpt-oss-120b",
       max_tokens: 50,
       temperature: 0.3,
       messages: [
@@ -128,7 +128,7 @@ Is this question related to the study material? Answer only with RELEVANT or IRR
 
     // If relevant, proceed with normal answer
     const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+      model: "openai/gpt-oss-120b",
       max_tokens: 400,
       temperature: 0.6,
       messages: [
